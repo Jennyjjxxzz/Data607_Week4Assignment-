@@ -1,0 +1,96 @@
+---
+title: "Week 4 Assignment Resubmit"
+author: "Jiaxin Zheng"
+date: "2024-09-27"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r}
+library(readr)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+```
+
+```{r}
+#read the CSV file
+data <- read_csv("https://raw.githubusercontent.com/Jennyjjxxzz/Data607_Week4Assignment-/refs/heads/main/arrival%20delays%20for%20two%20airlines%20across%20five%20destinations.csv")
+
+#rename the columns
+colnames(data) <- c("Airline", "Status", "Los Angeles", "Phoenix", "San Diego", "San Francisco", "Seattle")
+
+#try to fill in the missing values in column 1 "Airline"
+data <- data %>%
+  fill(Airline, .direction = "down")
+
+#remove one row 
+data <- data[-c(3),]
+
+```
+
+
+```{r longer()}
+data_longer <- data |>
+  pivot_longer(cols = 3:7,
+               names_to = "Destination",
+               values_to = "Count",
+               values_drop_na = TRUE)
+```
+
+
+```{r wider()}
+data_wider <- data_longer |>
+  pivot_wider(names_from = Status,
+              values_from = Count)
+colnames(data_wider) <- c("Airline", "Destination", "On_Time_1", "delayed", "On_Time_2")
+```
+
+```{r}
+#combine the "on time" column
+data_wider <- data_wider |>
+  mutate(on_time_combined = coalesce(On_Time_1, On_Time_2))
+```
+
+
+```{r}
+data_plot <- data_wider |>
+  select(Airline, Destination, on_time_combined, delayed) |>
+  pivot_longer(cols = c(on_time_combined, delayed), 
+               names_to = "Status", 
+               values_to = "Count")
+
+ggplot(data_plot, aes(x = Destination, y = Count, fill = Status)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_wrap(~ Airline) +
+  labs(title = "Flight Status",
+       x = "Destination",
+       y = "Number of Flights",
+       fill = "Status") +
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+
+```{r}
+# Calculate delay rate
+data_wider <- data_wider |>
+  mutate(total_flights = on_time_combined + delayed,
+         delay_rate = delayed / total_flights)
+
+
+ggplot(data_wider, aes(x = Destination, y = delay_rate, fill = Airline)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Delay Rate by Destination",
+       x = "Destination",
+       y = "Delay Rate",
+       fill = "Airline") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+In conclusion:
+As we can see the plots depend on the delay rate for each city. Alaska Air line has lower delay percentages in each city than American West. But the overall plot(first plot), American West in Phoenix holds lowest delay rate.
